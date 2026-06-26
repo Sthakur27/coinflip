@@ -37,7 +37,7 @@ function spawnOne() {
   const dir = Math.random() < 0.5 ? 1 : -1;
   const baseY = 38 + Math.random() * 175;
   const b = {
-    type: t, r: T.r, hp: T.hp, pts: T.pts, dir, baseY, x: dir > 0 ? -26 : S.VW + 26, y: baseY,
+    type: t, r: T.r, hp: T.hp, maxHp: T.hp, pts: T.pts, dir, baseY, x: dir > 0 ? -26 : S.VW + 26, y: baseY,
     vx: dir * (40 + Math.random() * 24) * T.spd * speedMul(S.score),
     flap: Math.random() * TAU, bob: Math.random() * TAU, hitFlash: 0,
     bobAmp: T.zig ? 11 : 3.5, bobSpd: T.zig ? 11 : 6,
@@ -104,7 +104,7 @@ function hitBird(bi, coin) {
   const sup = coin.charged, T = TYPES[b.type], pts = b.pts * (sup ? 3 : 1);
   S.score += pts; S.streak++;
   if (S.score > S.best) { S.best = S.score; localStorage.setItem('coinflip_best', S.best); }
-  if (T.golden) { S.hearts = Math.min(HEART_MAX, S.hearts + 1); popText(b.x, b.y - 16, '+LIFE', '#ff8aa0'); }
+  if (T.golden) { S.hearts++; popText(b.x, b.y - 16, '+LIFE', '#ff8aa0'); }   // can overlife past HEART_MAX
   if (T.gift && b.pu) { S.power = b.pu; S.powerT = POWERUPS[b.pu].dur; S.banner = { text: POWERUPS[b.pu].name + '!', t: 1.6 }; beep(600, 0.1, 'square', 0.06); setTimeout(() => beep(1200, 0.12, 'square', 0.05), 90); }
   burst(b.x, b.y, sup ? PAL.superA : (T.gift ? '#c89bff' : PAL.gold));
   popText(b.x, b.y - 10, sup ? `+${pts}!` : (pts > 1 ? `+${pts}` : (S.streak >= 3 ? 'NICE!' : 'BONK!')), sup ? PAL.superA : PAL.gold);
@@ -181,7 +181,7 @@ function release() {
   const r = S.power === 'big' ? COIN_R * 1.9 : COIN_R;
   let shots = 1, spread = 0;
   if (S.power === 'triple') { shots = 3; spread = 0.17; }
-  else if (S.power === 'shotgun') { shots = 6; spread = 0.11; }
+  else if (S.power === 'shotgun') { shots = 7; spread = 0.11; }   // odd → a dead-straight centre pellet
   for (let i = 0; i < shots; i++) {
     const off = shots === 1 ? 0 : (i - (shots - 1) / 2) * spread;
     const ca = Math.cos(off), sa = Math.sin(off);
@@ -217,7 +217,7 @@ function frame(now) {
   if (S.charging) { if (!S.dragging) S.charge = Math.min(1, S.charge + dt * CHARGE_RATE); S.handDip = S.charge * 5; } else S.handDip = 0;
   if (S.flickT > 0) S.flickT -= dt;
   if (S.ammo < AMMO_MAX) { S.regenT += dt; if (S.regenT >= REGEN_TIME) { S.ammo++; S.regenT -= REGEN_TIME; } } else S.regenT = 0;
-  if (S.power) { S.powerT -= dt; if (S.powerT <= 0) S.power = null; }
+  if (S.power) { S.powerT -= wdt; if (S.powerT <= 0) S.power = null; }   // burns on world time, so aim bullet-time doesn't waste it
 
   if (S.state === 'play') {
     S.spawnT -= dt;

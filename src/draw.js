@@ -75,6 +75,11 @@ export function drawBird(b) {
   circ(6, -3, 2.4, '#fff'); circ(6.6, -3, 1.1, DARK, null);                              // eye
   if (T.thief) { g.fillStyle = DARK; g.beginPath(); g.ellipse(5.6, -3, 3.6, 2.3, 0, 0, TAU); g.fill(); circ(6.6, -3, 1, '#fff', null); }   // mask
   g.save(); g.translate(-1, -3); g.rotate(flap * 0.6); ell(-3, 2, 6.5, 3.4, T.dk); g.restore();   // wing
+  if (b.maxHp > 1 && b.hp < b.maxHp) {            // hurt: cracked body + dazed eye
+    g.strokeStyle = DARK; g.lineJoin = 'round'; g.lineWidth = 1.1;
+    g.beginPath(); g.moveTo(-4, -6); g.lineTo(-1, -2); g.lineTo(-3, 1); g.lineTo(0, 4); g.stroke();
+    g.lineWidth = 1; g.beginPath(); g.moveTo(4.6, -4.2); g.lineTo(7.4, -1.4); g.moveTo(7.4, -4.2); g.lineTo(4.6, -1.4); g.stroke();
+  }
   if (b.hitFlash > 0) { g.globalAlpha = Math.min(0.85, b.hitFlash * 5); circ(0, 0, 11.5, '#fff', null); g.globalAlpha = 1; }
   g.restore();
   if (T.gift && b.pu) {                          // floating power-up icon, unflipped
@@ -203,6 +208,7 @@ export function drawHUD() {
   text(String(S.score), 9, 40, 24, PAL.gold);
   if (S.best) text('BEST ' + S.best, 9, 56, 10, '#ffe9a0');
   for (let i = 0; i < HEART_MAX; i++) drawHeart(S.VW - 32 - (HEART_MAX - 1 - i) * 17, 18, 6.5, i < S.hearts);
+  if (S.hearts > HEART_MAX) text('x' + S.hearts, S.VW - 70, 23, 11, '#ff8aa0', 'right');   // overlife count
   const n = AMMO_MAX, cs = 13, gap = 7, tw = n * cs + (n - 1) * gap, ex = (S.VW - tw) / 2;
   for (let i = 0; i < n; i++) {
     const cx = ex + cs / 2 + i * (cs + gap), cy = 16 + cs / 2;
