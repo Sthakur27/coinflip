@@ -6,22 +6,23 @@ import {
 } from './config.js';
 import {
   cv, ctx, buf, g, S, pointer, dragStart, coins, birds, hoops, parts, pops,
-  resize, toLogical, aimDir, handTop, inRect, pauseBtn, resumeBtn, retryBtn,
+  resize, toLogical, aimDir, handTop, inRect, pauseBtn, muteBtn, resumeBtn, retryBtn,
 } from './state.js';
-import { resumeAudio, beep } from './audio.js';
+import { resumeAudio, beep, toggleMuted, isMuted } from './audio.js';
+import { startMusic } from './music.js';
 import {
   drawBackground, drawBird, drawHoop, drawCoin, drawHand, drawTrajectory, drawSling,
-  drawHUD, drawPauseBtn, drawPaused, drawGameOver, drawStar, text,
+  drawHUD, drawPauseBtn, drawMuteBtn, drawPaused, drawGameOver, drawStar, text,
 } from './draw.js';
 
 // ── spawning + difficulty
 function pickType(s) {
   if (Math.random() < (S.hearts < HEART_MAX ? 0.05 : 0.025)) return 'golden';   // rare bonus, likelier when hurt
-  if (s >= 5 && Math.random() < 0.07) return 'gift';                            // power-up carrier
+  if (s >= 3 && Math.random() < 0.07) return 'gift';                            // power-up carrier
   const w = [['sparrow', 5]];
-  if (s >= 8) w.push(['pigeon', 1.2]);
-  if (s >= 12) w.push(['thief', 2]);
-  if (s >= 24) w.push(['swift', 3]);
+  if (s >= 3) w.push(['pigeon', 1.2]);
+  if (s >= 5) w.push(['thief', 2]);
+  if (s >= 9) w.push(['swift', 3]);
   let tot = 0; for (const e of w) tot += e[1];
   let r = Math.random() * tot;
   for (const [t, x] of w) { if ((r -= x) <= 0) return t; }
@@ -146,9 +147,10 @@ function restart() {
 function pauseGame() { if (S.state === 'play') { S.state = 'paused'; S.charging = false; S.dragging = false; } }
 function togglePause() { if (S.state === 'play') pauseGame(); else if (S.state === 'paused') S.state = 'play'; }
 function onDown(p) {
-  resumeAudio();
+  resumeAudio(); startMusic();
   if (S.state === 'over') { if (S.overT > 0.5 && inRect(p, retryBtn())) restart(); return; }   // deliberate confirm only
   if (S.state === 'paused') { if (inRect(p, resumeBtn())) S.state = 'play'; return; }
+  if (inRect(p, muteBtn())) { toggleMuted(); return; }
   if (inRect(p, pauseBtn())) { pauseGame(); return; }
   beginDrag(p);
 }
@@ -195,8 +197,9 @@ addEventListener('mousemove', e => { setPointer(e.clientX, e.clientY); if (S.dra
 addEventListener('mousedown', e => { setPointer(e.clientX, e.clientY); onDown(pointer); });
 addEventListener('mouseup', onUp);
 addEventListener('keydown', e => {
-  if (e.code === 'Space') { e.preventDefault(); if (!e.repeat && S.state === 'play' && S.ammo > 0 && !S.dragging) { resumeAudio(); S.charging = true; S.charge = 0; S.aimAng = 0; } }
+  if (e.code === 'Space') { e.preventDefault(); if (!e.repeat && S.state === 'play' && S.ammo > 0 && !S.dragging) { resumeAudio(); startMusic(); S.charging = true; S.charge = 0; S.aimAng = 0; } }
   else if (e.code === 'KeyP' || e.code === 'Escape') { e.preventDefault(); togglePause(); }
+  else if (e.code === 'KeyM') { toggleMuted(); }
   else if ((e.code === 'Enter' || e.code === 'KeyR') && S.state === 'over' && S.overT > 0.5) restart();
 });
 addEventListener('keyup', e => { if (e.code === 'Space') { e.preventDefault(); if (S.state === 'play' && S.charging && !S.dragging) release(); } });
@@ -219,7 +222,7 @@ function frame(now) {
   if (S.state === 'play') {
     S.spawnT -= dt;
     if (S.spawnT <= 0) {
-      if (hoops.length === 0 && S.score >= 6 && Math.random() < 0.10) { spawnHoop(); S.spawnT = spawnGap(S.score) * (0.9 + Math.random() * 0.6); }   // rare hoop
+      if (hoops.length === 0 && S.score >= 3 && Math.random() < 0.10) { spawnHoop(); S.spawnT = spawnGap(S.score) * (0.9 + Math.random() * 0.6); }   // rare hoop
       else if (birds.length < maxBirds(S.score)) { spawnOne(); S.spawnT = spawnGap(S.score) * (0.7 + Math.random() * 0.6); }
       else S.spawnT = 0.3;
     }
@@ -311,7 +314,7 @@ function frame(now) {
   if (S.banner) { g.globalAlpha = Math.min(1, S.banner.t / 0.4); text(S.banner.text, S.VW / 2, 82, 24, '#fff', 'center'); g.globalAlpha = 1; }
   if (S.flashRed > 0) { g.fillStyle = `rgba(255,46,66,${S.flashRed * 0.5})`; g.fillRect(0, 0, S.VW, S.VH); }
   drawHUD();
-  if (S.state === 'play') drawPauseBtn();
+  if (S.state === 'play') { drawMuteBtn(isMuted()); drawPauseBtn(); }
   if (S.state === 'paused') drawPaused();
   if (S.state === 'over') drawGameOver();
   g.restore();

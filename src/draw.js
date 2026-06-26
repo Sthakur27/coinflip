@@ -4,7 +4,7 @@ import {
   DARK, PAL, TAU, LW, GROUND_Y, GRAVITY, AMMO_MAX, HEART_MAX, REGEN_TIME,
   TYPES, POWERUPS, SKY_T, SKY_M, SKY_B, VIS_PULL, HOOP,
 } from './config.js';
-import { g, S, clouds, pointer, dragStart, handTop, aimDir, pauseBtn, resumeBtn, retryBtn } from './state.js';
+import { g, S, clouds, pointer, dragStart, handTop, aimDir, pauseBtn, muteBtn, resumeBtn, retryBtn } from './state.js';
 
 // ── primitives
 export function ell(x, y, rx, ry, fill, stroke = DARK) {
@@ -242,6 +242,14 @@ export function drawPauseBtn() {
   const r = pauseBtn();
   rrect(r.x, r.y, r.w, r.h, 3, 'rgba(20,12,30,0.35)', DARK);
   g.fillStyle = '#fff'; g.fillRect(r.x + 5, r.y + 4, 2.5, r.h - 8); g.fillRect(r.x + r.w - 7.5, r.y + 4, 2.5, r.h - 8);
+}
+export function drawMuteBtn(muted) {
+  const r = muteBtn();
+  rrect(r.x, r.y, r.w, r.h, 3, 'rgba(20,12,30,0.35)', DARK);
+  g.fillStyle = '#fff';
+  g.beginPath(); g.moveTo(r.x + 4, r.y + 6); g.lineTo(r.x + 7, r.y + 6); g.lineTo(r.x + 10, r.y + 3); g.lineTo(r.x + 10, r.y + 12); g.lineTo(r.x + 7, r.y + 9); g.lineTo(r.x + 4, r.y + 9); g.closePath(); g.fill();
+  if (muted) { g.strokeStyle = '#ff6b6b'; g.lineWidth = 1.6; g.beginPath(); g.moveTo(r.x + 3, r.y + 3); g.lineTo(r.x + r.w - 3, r.y + r.h - 3); g.stroke(); }
+  else { g.strokeStyle = '#fff'; g.lineWidth = 1.2; g.beginPath(); g.arc(r.x + 11, r.y + 7.5, 3, -0.7, 0.7); g.stroke(); }
 }
 export function drawPaused() {
   g.fillStyle = 'rgba(20,12,30,0.5)'; g.fillRect(0, 0, S.VW, S.VH);

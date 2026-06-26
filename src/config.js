@@ -17,7 +17,7 @@ export const LW = 1.4;                       // outline width (logical px)
 // world / physics
 export const GROUND_Y = 300;
 export const GRAVITY = 700;
-export const POWER_MIN = 290, POWER_MAX = 720;   // fling speed at 0% / 100% pull
+export const POWER_MIN = 380, POWER_MAX = 730;   // fling speed at 0% / 100% pull (higher floor)
 export const MAX_TILT = 1.1;                     // ~63° off vertical
 export const COIN_R = 6;
 export const CHARGE_RATE = 1.55;                 // keyboard hold-to-charge speed
@@ -27,7 +27,7 @@ export const AMMO_MAX = 3, REGEN_TIME = 3;       // 3 coins; one back every 3s
 export const HEART_MAX = 3;
 
 // slingshot input: pull distance → power
-export const MAX_PULL = 150, DEAD_PULL = 12, VIS_PULL = 42;
+export const MAX_PULL = 70, DEAD_PULL = 10, VIS_PULL = 42;
 
 // target birds
 export const TYPES = {
