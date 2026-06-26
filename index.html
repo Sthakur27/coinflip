@@ -472,6 +472,7 @@ function hitBird(bi, coin) {
   popText(b.x, b.y - 10, sup ? `+${pts}!` : (pts > 1 ? `+${pts}` : (streak >= 3 ? 'NICE!' : 'BONK!')), sup ? PAL.superA : PAL.gold);
   beep(sup ? 990 : 880, 0.1, 'square', 0.07); setTimeout(() => beep(sup ? 1560 : 1320, 0.12, 'square', 0.05), 60);
   shake = sup ? 7 : 5;
+  if (T.r >= 14) { shake = Math.max(shake, 13); beep(110, 0.18, 'sawtooth', 0.06); }   // big bird lands with a thud
   ammo = Math.min(AMMO_MAX, ammo + 1);     // bonk refunds a coin
   birds.splice(bi, 1);
   checkStage();
@@ -532,6 +533,7 @@ resize();
 function frame(now) {
   let dt = Math.min((now - prev) / 1000, 0.033); prev = now;
   if (state === 'paused') dt = 0;            // freeze the whole sim, keep rendering
+  const wdt = (state === 'play' && charging ? 0.55 : 1) * dt;   // slight bullet-time while aiming
 
   // update aim / charge / hand pose
   if (state === 'play' && !charging) aimAng += (0 - aimAng) * Math.min(1, dt * 10);   // hand eases upright when idle
@@ -548,7 +550,7 @@ function frame(now) {
       if (birds.length < maxBirds(score)) { spawnOne(); spawnT = spawnGap(score) * (0.7 + Math.random() * 0.6); }
       else spawnT = 0.3;
     }
-    const bdt = (power === 'slowmo' ? 0.4 : 1) * dt;     // slow-mo dilates only the birds
+    const bdt = (power === 'slowmo' ? 0.4 : 1) * wdt;    // slow-mo power-up + aim bullet-time
     for (let bi = birds.length - 1; bi >= 0; bi--) {
       const b = birds[bi];
       b.x += b.vx * bdt; b.flap += bdt * 14; b.bob += bdt * b.bobSpd; b.swoopPhase += bdt * b.swoopSpd;
@@ -561,7 +563,7 @@ function frame(now) {
   // coins: integrate, hit a bird, fall off the world
   for (let i = coins.length - 1; i >= 0; i--) {
     const c = coins[i];
-    c.vy += GRAVITY * dt; c.x += c.vx * dt; c.y += c.vy * dt; c.spin += c.spinV * dt;
+    c.vy += GRAVITY * wdt; c.x += c.vx * wdt; c.y += c.vy * wdt; c.spin += c.spinV * wdt;
     let hit = -1;
     if (state === 'play') for (let bi = 0; bi < birds.length; bi++) { const b = birds[bi], dx = c.x - b.x, dy = c.y - b.y, rr = b.r + c.r - 2; if (dx * dx + dy * dy < rr * rr) { hit = bi; break; } }
     if (hit >= 0) { hitBird(hit, c); coins.splice(i, 1); continue; }
@@ -595,7 +597,7 @@ function frame(now) {
   }
 
   // particles / popups
-  for (let i = parts.length - 1; i >= 0; i--) { const p = parts[i]; p.vy += GRAVITY * 0.6 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) parts.splice(i, 1); }
+  for (let i = parts.length - 1; i >= 0; i--) { const p = parts[i]; p.vy += GRAVITY * 0.6 * wdt; p.x += p.vx * wdt; p.y += p.vy * wdt; p.life -= wdt; if (p.life <= 0) parts.splice(i, 1); }
   for (let i = pops.length - 1; i >= 0; i--) { const p = pops[i]; p.y -= dt * 22; p.t -= dt; if (p.t <= 0) pops.splice(i, 1); }
   if (shake > 0) shake -= dt * 30;
   if (banner) { banner.t -= dt; if (banner.t <= 0) banner = null; }
