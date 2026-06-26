@@ -6,13 +6,13 @@ import {
 } from './config.js';
 import {
   cv, ctx, buf, g, S, pointer, dragStart, coins, birds, hoops, parts, pops,
-  resize, toLogical, aimDir, handTop, inRect, pauseBtn, muteBtn, resumeBtn, retryBtn,
+  resize, toLogical, aimDir, handTop, inRect, pauseBtn, sfxBtn, musicBtn, resumeBtn, restartBtn, retryBtn,
 } from './state.js';
-import { resumeAudio, beep, toggleMuted, isMuted } from './audio.js';
+import { resumeAudio, beep, toggleSfx, toggleMusic, isSfxOff, isMusicOff } from './audio.js';
 import { startMusic } from './music.js';
 import {
   drawBackground, drawBird, drawHoop, drawCoin, drawHand, drawTrajectory, drawSling,
-  drawHUD, drawPauseBtn, drawMuteBtn, drawPaused, drawGameOver, drawStar, text,
+  drawHUD, drawPauseBtn, drawSfxBtn, drawMusicBtn, drawPaused, drawGameOver, drawStar, text,
 } from './draw.js';
 
 // ── spawning + difficulty
@@ -48,7 +48,7 @@ function spawnOne() {
 }
 
 function spawnCoin(x, y, vx, vy, spinV, r = COIN_R) {
-  coins.push({ x, y, vx, vy, spin: 0, spinV, r, charged: false, hitRim: false });
+  coins.push({ x, y, vx, vy, spin: 0, spinV, r, charged: false, hitRim: false, struck: [] });
   if (coins.length > 28) coins.shift();
 }
 
@@ -149,8 +149,9 @@ function togglePause() { if (S.state === 'play') pauseGame(); else if (S.state =
 function onDown(p) {
   resumeAudio(); startMusic();
   if (S.state === 'over') { if (S.overT > 0.5 && inRect(p, retryBtn())) restart(); return; }   // deliberate confirm only
-  if (S.state === 'paused') { if (inRect(p, resumeBtn())) S.state = 'play'; return; }
-  if (inRect(p, muteBtn())) { toggleMuted(); return; }
+  if (S.state === 'paused') { if (inRect(p, resumeBtn())) S.state = 'play'; else if (inRect(p, restartBtn())) restart(); return; }
+  if (inRect(p, musicBtn())) { toggleMusic(); return; }
+  if (inRect(p, sfxBtn())) { toggleSfx(); return; }
   if (inRect(p, pauseBtn())) { pauseGame(); return; }
   beginDrag(p);
 }
@@ -199,7 +200,8 @@ addEventListener('mouseup', onUp);
 addEventListener('keydown', e => {
   if (e.code === 'Space') { e.preventDefault(); if (!e.repeat && S.state === 'play' && S.ammo > 0 && !S.dragging) { resumeAudio(); startMusic(); S.charging = true; S.charge = 0; S.aimAng = 0; } }
   else if (e.code === 'KeyP' || e.code === 'Escape') { e.preventDefault(); togglePause(); }
-  else if (e.code === 'KeyM') { toggleMuted(); }
+  else if (e.code === 'KeyM') { toggleMusic(); }
+  else if (e.code === 'KeyN') { toggleSfx(); }
   else if ((e.code === 'Enter' || e.code === 'KeyR') && S.state === 'over' && S.overT > 0.5) restart();
 });
 addEventListener('keyup', e => { if (e.code === 'Space') { e.preventDefault(); if (S.state === 'play' && S.charging && !S.dragging) release(); } });
@@ -249,9 +251,12 @@ function frame(now) {
   for (let i = coins.length - 1; i >= 0; i--) {
     const c = coins[i];
     c.vy += GRAVITY * wdt; c.x += c.vx * wdt; c.y += c.vy * wdt; c.spin += c.spinV * wdt;
-    let hit = -1;
-    if (S.state === 'play') for (let bi = 0; bi < birds.length; bi++) { const b = birds[bi], dx = c.x - b.x, dy = c.y - b.y, rr = b.r + c.r - 2; if (dx * dx + dy * dy < rr * rr) { hit = bi; break; } }
-    if (hit >= 0) { hitBird(hit, c); coins.splice(i, 1); continue; }
+    // pierce: hit every bird on the path once, the coin keeps flying (backward loop = safe with splice)
+    if (S.state === 'play') for (let bi = birds.length - 1; bi >= 0; bi--) {
+      const b = birds[bi]; if (c.struck.includes(b)) continue;
+      const dx = c.x - b.x, dy = c.y - b.y, rr = b.r + c.r - 2;
+      if (dx * dx + dy * dy < rr * rr) { c.struck.push(b); hitBird(bi, c); }
+    }
     // hoops: bounce off the rim posts, swish/score through the opening (coin passes through)
     if (S.state === 'play') for (const h of hoops) {
       const b1 = bounceOffPost(c, h.x - HOOP.rimW, h.y), b2 = bounceOffPost(c, h.x + HOOP.rimW, h.y);
@@ -314,7 +319,7 @@ function frame(now) {
   if (S.banner) { g.globalAlpha = Math.min(1, S.banner.t / 0.4); text(S.banner.text, S.VW / 2, 82, 24, '#fff', 'center'); g.globalAlpha = 1; }
   if (S.flashRed > 0) { g.fillStyle = `rgba(255,46,66,${S.flashRed * 0.5})`; g.fillRect(0, 0, S.VW, S.VH); }
   drawHUD();
-  if (S.state === 'play') { drawMuteBtn(isMuted()); drawPauseBtn(); }
+  if (S.state === 'play') { drawMusicBtn(isMusicOff()); drawSfxBtn(isSfxOff()); drawPauseBtn(); }
   if (S.state === 'paused') drawPaused();
   if (S.state === 'over') drawGameOver();
   g.restore();

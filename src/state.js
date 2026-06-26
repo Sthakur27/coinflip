@@ -55,7 +55,9 @@ export function handTop() {  // world point where the coin sits / launches from
 // ── on-screen buttons (geometry shared by input + render)
 export function inRect(p, r) { return p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h; }
 export function pauseBtn() { return { x: S.VW - 20, y: 6, w: 16, h: 15 }; }
-export function muteBtn() { return { x: S.VW - 40, y: 6, w: 16, h: 15 }; }
+export function sfxBtn() { return { x: S.VW - 40, y: 6, w: 16, h: 15 }; }
+export function musicBtn() { return { x: S.VW - 60, y: 6, w: 16, h: 15 }; }
 export function ctrBtn(w, h, cy) { return { x: (S.VW - w) / 2, y: cy, w, h }; }
-export function resumeBtn() { return ctrBtn(96, 24, S.VH / 2 + 6); }
+export function resumeBtn() { return ctrBtn(110, 24, S.VH / 2 - 6); }
+export function restartBtn() { return ctrBtn(110, 24, S.VH / 2 + 24); }
 export function retryBtn() { return ctrBtn(118, 26, S.VH / 2 + 42); }

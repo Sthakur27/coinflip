@@ -2,7 +2,7 @@
 // with a triangle bass, a kick on the downbeats, and offbeat hats, scheduled ahead
 // of the audio clock. Routes through the shared master gain so mute applies.
 
-import { audioCtx, masterNode } from './audio.js';
+import { audioCtx, musicNode } from './audio.js';
 
 const BPM = 132, STEP = 30 / BPM;            // eighth-note duration (s)
 const MEL  = [81, 0, 76, 79,  76, 0, 72, 74,  76, 0, 81, 79,  76, 72, 74, 0];   // 16 eighths, 0 = rest
@@ -14,7 +14,7 @@ const midi = m => 440 * Math.pow(2, (m - 69) / 12);
 
 function ensure() {
   const ac = audioCtx(); if (!ac) return null;
-  if (!mgain) { mgain = ac.createGain(); mgain.gain.value = 0.3; mgain.connect(masterNode()); }
+  if (!mgain) { mgain = ac.createGain(); mgain.gain.value = 0.3; mgain.connect(musicNode()); }
   if (!noiseBuf) {
     noiseBuf = ac.createBuffer(1, (ac.sampleRate * 0.2) | 0, ac.sampleRate);
     const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;

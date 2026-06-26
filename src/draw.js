@@ -4,7 +4,7 @@ import {
   DARK, PAL, TAU, LW, GROUND_Y, GRAVITY, AMMO_MAX, HEART_MAX, REGEN_TIME,
   TYPES, POWERUPS, SKY_T, SKY_M, SKY_B, VIS_PULL, HOOP,
 } from './config.js';
-import { g, S, clouds, pointer, dragStart, handTop, aimDir, pauseBtn, muteBtn, resumeBtn, retryBtn } from './state.js';
+import { g, S, clouds, pointer, dragStart, handTop, aimDir, pauseBtn, sfxBtn, musicBtn, resumeBtn, restartBtn, retryBtn } from './state.js';
 
 // ── primitives
 export function ell(x, y, rx, ry, fill, stroke = DARK) {
@@ -207,8 +207,8 @@ export function drawHUD() {
   text('SCORE', 9, 18, 11, '#fff');
   text(String(S.score), 9, 40, 24, PAL.gold);
   if (S.best) text('BEST ' + S.best, 9, 56, 10, '#ffe9a0');
-  for (let i = 0; i < HEART_MAX; i++) drawHeart(S.VW - 32 - (HEART_MAX - 1 - i) * 17, 18, 6.5, i < S.hearts);
-  if (S.hearts > HEART_MAX) text('x' + S.hearts, S.VW - 70, 23, 11, '#ff8aa0', 'right');   // overlife count
+  for (let i = 0; i < HEART_MAX; i++) drawHeart(S.VW - 78 - (HEART_MAX - 1 - i) * 17, 18, 6.5, i < S.hearts);
+  if (S.hearts > HEART_MAX) text('x' + S.hearts, S.VW - 120, 23, 11, '#ff8aa0', 'right');   // overlife count
   const n = AMMO_MAX, cs = 13, gap = 7, tw = n * cs + (n - 1) * gap, ex = (S.VW - tw) / 2;
   for (let i = 0; i < n; i++) {
     const cx = ex + cs / 2 + i * (cs + gap), cy = 16 + cs / 2;
@@ -249,19 +249,30 @@ export function drawPauseBtn() {
   rrect(r.x, r.y, r.w, r.h, 3, 'rgba(20,12,30,0.35)', DARK);
   g.fillStyle = '#fff'; g.fillRect(r.x + 5, r.y + 4, 2.5, r.h - 8); g.fillRect(r.x + r.w - 7.5, r.y + 4, 2.5, r.h - 8);
 }
-export function drawMuteBtn(muted) {
-  const r = muteBtn();
+function slash(r) { g.strokeStyle = '#ff6b6b'; g.lineWidth = 1.6; g.beginPath(); g.moveTo(r.x + 3, r.y + 3); g.lineTo(r.x + r.w - 3, r.y + r.h - 3); g.stroke(); }
+export function drawSfxBtn(off) {
+  const r = sfxBtn();
   rrect(r.x, r.y, r.w, r.h, 3, 'rgba(20,12,30,0.35)', DARK);
   g.fillStyle = '#fff';
   g.beginPath(); g.moveTo(r.x + 4, r.y + 6); g.lineTo(r.x + 7, r.y + 6); g.lineTo(r.x + 10, r.y + 3); g.lineTo(r.x + 10, r.y + 12); g.lineTo(r.x + 7, r.y + 9); g.lineTo(r.x + 4, r.y + 9); g.closePath(); g.fill();
-  if (muted) { g.strokeStyle = '#ff6b6b'; g.lineWidth = 1.6; g.beginPath(); g.moveTo(r.x + 3, r.y + 3); g.lineTo(r.x + r.w - 3, r.y + r.h - 3); g.stroke(); }
+  if (off) slash(r);
   else { g.strokeStyle = '#fff'; g.lineWidth = 1.2; g.beginPath(); g.arc(r.x + 11, r.y + 7.5, 3, -0.7, 0.7); g.stroke(); }
+}
+export function drawMusicBtn(off) {
+  const r = musicBtn();
+  rrect(r.x, r.y, r.w, r.h, 3, 'rgba(20,12,30,0.35)', DARK);
+  g.fillStyle = '#fff'; g.strokeStyle = '#fff'; g.lineWidth = 1.4;
+  g.beginPath(); g.ellipse(r.x + 5.5, r.y + 11, 2.4, 1.9, -0.3, 0, TAU); g.fill();   // note head
+  g.beginPath(); g.moveTo(r.x + 7.7, r.y + 10.6); g.lineTo(r.x + 7.7, r.y + 3.5); g.stroke();   // stem
+  g.beginPath(); g.moveTo(r.x + 7.7, r.y + 3.5); g.lineTo(r.x + 11, r.y + 5.5); g.stroke();      // flag
+  if (off) slash(r);
 }
 export function drawPaused() {
   g.fillStyle = 'rgba(20,12,30,0.5)'; g.fillRect(0, 0, S.VW, S.VH);
-  text('PAUSED', S.VW / 2, S.VH / 2 - 16, 28, '#fff', 'center');
+  text('PAUSED', S.VW / 2, S.VH / 2 - 28, 28, '#fff', 'center');
   drawButton(resumeBtn(), 'RESUME', '#3aa6f0');
-  text('P / ESC TO RESUME', S.VW / 2, S.VH / 2 + 50, 9, '#d8e2ef', 'center');
+  drawButton(restartBtn(), 'RESTART', '#ff6b6b');
+  text('P / ESC TO RESUME', S.VW / 2, S.VH / 2 + 60, 8, '#d8e2ef', 'center');
 }
 export function drawGameOver() {
   g.fillStyle = `rgba(20,12,30,${Math.min(0.62, S.overT * 0.9)})`; g.fillRect(0, 0, S.VW, S.VH);
