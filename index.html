@@ -138,8 +138,8 @@ function pickType(s) {
   for (const [t, x] of w) { if ((r -= x) <= 0) return t; }
   return 'sparrow';
 }
-function spawnGap(s) { return Math.max(0.8, 2.5 - s * 0.04); }                  // 2.5s → 0.8s by score ~42
-function maxBirds(s) { return s < 8 ? 1 : s < 20 ? 2 : s < 40 ? 3 : 4; }
+function spawnGap(s) { return Math.max(1.1, 2.6 - s * 0.03); }                  // 2.6s → 1.1s, gentler cadence
+function maxBirds(s) { return s < 12 ? 1 : s < 50 ? 2 : 3; }                    // usually 1-2; only 3 very late
 function speedMul(s) { return 1 + s * 0.012; }
 
 function spawnOne() {
@@ -291,6 +291,17 @@ function drawTrajectory(power) {
     if (i % 4 === 0) { g.beginPath(); g.ellipse(px, py, 1.1, 1.1, 0, 0, TAU); g.fill(); }
   }
 }
+function drawSling() {                              // band + knob showing the pull
+  const t = handTop();
+  const dx = pointer.x - dragStart.x, dy = pointer.y - dragStart.y, len = Math.hypot(dx, dy) || 1;
+  const vl = Math.min(len, VIS_PULL);
+  const kx = t.x + dx / len * vl, ky = t.y + dy / len * vl;   // knob sits in the drag direction
+  g.lineCap = 'round';
+  g.strokeStyle = DARK; g.lineWidth = 4.5; g.beginPath(); g.moveTo(t.x, t.y); g.lineTo(kx, ky); g.stroke();
+  g.strokeStyle = '#ffe9a0'; g.lineWidth = 2; g.beginPath(); g.moveTo(t.x, t.y); g.lineTo(kx, ky); g.stroke();
+  const col = charge < 0.5 ? '#6ee7ff' : charge < 0.82 ? '#ffd34d' : '#ff6b6b';
+  circ(kx, ky, 5.5, col, DARK);
+}
 
 // ────────────────────────────────────────────────────────────  particles + popups
 const parts = [], pops = [];
@@ -320,7 +331,7 @@ function drawHUD() {
   text(String(score), 9, 40, 24, PAL.gold);
   if (best) text('BEST ' + best, 9, 56, 10, '#ffe9a0');
   // hearts, top-right
-  for (let i = 0; i < HEART_MAX; i++) drawHeart(VW - 16 - (HEART_MAX - 1 - i) * 17, 18, 6.5, i < hearts);
+  for (let i = 0; i < HEART_MAX; i++) drawHeart(VW - 32 - (HEART_MAX - 1 - i) * 17, 18, 6.5, i < hearts);
   // energy bar — coin ammo, top centre
   const n = AMMO_MAX, cs = 13, gap = 7, tw = n * cs + (n - 1) * gap, ex = (VW - tw) / 2;
   for (let i = 0; i < n; i++) {
@@ -351,7 +362,7 @@ function drawHUD() {
   } else if (ammo <= 0) {
     text('OUT OF COINS — RECHARGING…', VW / 2, VH - 8, 10, '#ffd66b', 'center');
   } else {
-    text('HOLD TO CHARGE  ·  AIM WITH MOUSE  ·  RELEASE TO FLIP', VW / 2, VH - 8, 10, '#fff', 'center');
+    text('DRAG TO AIM + POWER  ·  RELEASE TO FLING', VW / 2, VH - 8, 10, '#fff', 'center');
   }
 }
 
@@ -369,23 +380,41 @@ let power = null, powerT = 0;            // active power-up + remaining seconds
 
 // input
 let pointer = { x: VW / 2, y: 40 };
+let dragging = false; const dragStart = { x: 0, y: 0 };
+const MAX_PULL = 150, DEAD_PULL = 12, VIS_PULL = 42;   // slingshot: pull distance → power
 function toLogical(cx, cy) { return { x: cx / innerWidth * VW, y: cy / innerHeight * VH }; }
 function inRect(p, r) { return p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h; }
 function pauseBtn() { return { x: VW - 20, y: 6, w: 16, h: 15 }; }
 function ctrBtn(w, h, cy) { return { x: (VW - w) / 2, y: cy, w, h }; }
 function resumeBtn() { return ctrBtn(96, 24, VH / 2 + 6); }
 function retryBtn() { return ctrBtn(118, 26, VH / 2 + 42); }
-function pauseGame() { if (state === 'play') { state = 'paused'; charging = false; } }
+function pauseGame() { if (state === 'play') { state = 'paused'; charging = false; dragging = false; } }
 function togglePause() { if (state === 'play') pauseGame(); else if (state === 'paused') state = 'play'; }
 function onDown(p) {
   resumeAudio();
   if (state === 'over') { if (overT > 0.5 && inRect(p, retryBtn())) restart(); return; }   // deliberate confirm only
   if (state === 'paused') { if (inRect(p, resumeBtn())) state = 'play'; return; }
   if (inRect(p, pauseBtn())) { pauseGame(); return; }
-  if (ammo <= 0) return;
-  charging = true; charge = 0;
+  beginDrag(p);
 }
-function onUp() { if (state === 'play') release(); }
+function onUp() { if (state === 'play') endDrag(); }
+function beginDrag(p) {
+  if (ammo <= 0) return;
+  dragging = true; charging = true; charge = 0;
+  dragStart.x = p.x; dragStart.y = p.y;
+  updateDrag(p);
+}
+function updateDrag(p) {
+  if (!dragging) return;
+  const dx = p.x - dragStart.x, dy = p.y - dragStart.y, len = Math.hypot(dx, dy);
+  charge = Math.max(0, Math.min(1, (len - DEAD_PULL) / (MAX_PULL - DEAD_PULL)));
+  aimAng = Math.max(-MAX_TILT, Math.min(MAX_TILT, Math.atan2(-dx, dy)));   // fling opposite the pull
+}
+function endDrag() {
+  if (!dragging) return;
+  dragging = false;
+  if (charge > 0) release(); else charging = false;   // a tiny tap just cancels, no coin spent
+}
 function release() {
   if (!charging) return; charging = false;
   if (ammo <= 0) return;
@@ -404,14 +433,18 @@ function release() {
   flickT = 0.22;
   beep(220 + charge * 520, 0.16, 'triangle', 0.06);
 }
-addEventListener('mousemove', e => { pointer = toLogical(e.clientX, e.clientY); });
-addEventListener('mousedown', e => { pointer = toLogical(e.clientX, e.clientY); press(); resumeAudio(); });
-addEventListener('mouseup', release);
-addEventListener('keydown', e => { if (e.code === 'Space' && !e.repeat) { e.preventDefault(); press(); resumeAudio(); } });
-addEventListener('keyup', e => { if (e.code === 'Space') { e.preventDefault(); release(); } });
-addEventListener('touchstart', e => { const t = e.touches[0]; pointer = toLogical(t.clientX, t.clientY); press(); resumeAudio(); e.preventDefault(); }, { passive: false });
-addEventListener('touchmove', e => { const t = e.touches[0]; pointer = toLogical(t.clientX, t.clientY); e.preventDefault(); }, { passive: false });
-addEventListener('touchend', e => { release(); e.preventDefault(); }, { passive: false });
+addEventListener('mousemove', e => { pointer = toLogical(e.clientX, e.clientY); if (dragging) updateDrag(pointer); });
+addEventListener('mousedown', e => { pointer = toLogical(e.clientX, e.clientY); onDown(pointer); });
+addEventListener('mouseup', onUp);
+addEventListener('keydown', e => {
+  if (e.code === 'Space') { e.preventDefault(); if (!e.repeat && state === 'play' && ammo > 0 && !dragging) { resumeAudio(); charging = true; charge = 0; aimAng = 0; } }
+  else if (e.code === 'KeyP' || e.code === 'Escape') { e.preventDefault(); togglePause(); }
+  else if ((e.code === 'Enter' || e.code === 'KeyR') && state === 'over' && overT > 0.5) restart();
+});
+addEventListener('keyup', e => { if (e.code === 'Space') { e.preventDefault(); if (state === 'play' && charging && !dragging) release(); } });
+addEventListener('touchstart', e => { const t = e.touches[0]; pointer = toLogical(t.clientX, t.clientY); onDown(pointer); e.preventDefault(); }, { passive: false });
+addEventListener('touchmove', e => { const t = e.touches[0]; pointer = toLogical(t.clientX, t.clientY); if (dragging) updateDrag(pointer); e.preventDefault(); }, { passive: false });
+addEventListener('touchend', e => { onUp(); e.preventDefault(); }, { passive: false });
 
 // ────────────────────────────────────────────────────────────  audio
 let actx;
@@ -460,7 +493,7 @@ function checkStage() {
   if (ns > stage) { stage = ns; banner = { text: 'STAGE ' + stage, t: 1.5 }; beep(680, 0.12, 'square', 0.05); setTimeout(() => beep(1020, 0.14, 'square', 0.04), 120); }
 }
 function gameOver() {
-  state = 'over'; overT = 0; charging = false;
+  state = 'over'; overT = 0; charging = false; dragging = false;
   beep(220, 0.5, 'sawtooth', 0.08); setTimeout(() => beep(120, 0.6, 'sawtooth', 0.07), 160);
   for (let k = 0; k < ammo; k++) spawnCoin(HAND_X + (Math.random() * 22 - 11), GROUND_Y - 30, Math.random() * 220 - 110, -160 - Math.random() * 120, 22);
   ammo = 0;
@@ -468,14 +501,29 @@ function gameOver() {
 function restart() {
   score = 0; streak = 0; hearts = HEART_MAX; ammo = AMMO_MAX; regenT = 0; stage = 1;
   coins.length = 0; birds.length = 0; parts.length = 0; pops.length = 0;
-  spawnT = 0.5; banner = null; flashRed = 0; overT = 0; power = null; powerT = 0; state = 'play';
+  spawnT = 0.5; banner = null; flashRed = 0; overT = 0; power = null; powerT = 0; dragging = false; state = 'play';
+}
+function drawButton(r, label, col) {
+  rrect(r.x, r.y, r.w, r.h, 6, col, DARK);
+  text(label, r.x + r.w / 2, r.y + r.h / 2 + 4, 12, '#fff', 'center');
+}
+function drawPauseBtn() {
+  const r = pauseBtn();
+  rrect(r.x, r.y, r.w, r.h, 3, 'rgba(20,12,30,0.35)', DARK);
+  g.fillStyle = '#fff'; g.fillRect(r.x + 5, r.y + 4, 2.5, r.h - 8); g.fillRect(r.x + r.w - 7.5, r.y + 4, 2.5, r.h - 8);
+}
+function drawPaused() {
+  g.fillStyle = 'rgba(20,12,30,0.5)'; g.fillRect(0, 0, VW, VH);
+  text('PAUSED', VW / 2, VH / 2 - 16, 28, '#fff', 'center');
+  drawButton(resumeBtn(), 'RESUME', '#3aa6f0');
+  text('P / ESC TO RESUME', VW / 2, VH / 2 + 50, 9, '#d8e2ef', 'center');
 }
 function drawGameOver() {
-  g.fillStyle = `rgba(20,12,30,${Math.min(0.6, overT * 0.9)})`; g.fillRect(0, 0, VW, VH);
-  text('GAME OVER', VW / 2, VH / 2 - 14, 30, '#ff6b8a', 'center');
-  text('SCORE ' + score, VW / 2, VH / 2 + 12, 16, '#fff', 'center');
-  text('BEST ' + best, VW / 2, VH / 2 + 32, 12, '#ffe9a0', 'center');
-  if (overT > 0.7 && Math.floor(overT * 2) % 2 === 0) text('CLICK / SPACE TO PLAY AGAIN', VW / 2, VH / 2 + 58, 11, '#fff', 'center');
+  g.fillStyle = `rgba(20,12,30,${Math.min(0.62, overT * 0.9)})`; g.fillRect(0, 0, VW, VH);
+  text('GAME OVER', VW / 2, VH / 2 - 30, 30, '#ff6b8a', 'center');
+  text('SCORE ' + score, VW / 2, VH / 2 - 4, 16, '#fff', 'center');
+  text('BEST ' + best, VW / 2, VH / 2 + 14, 12, '#ffe9a0', 'center');
+  if (overT > 0.5) { drawButton(retryBtn(), 'RETRY', '#3aa6f0'); text('ENTER / R', VW / 2, VH / 2 + 84, 9, '#d8e2ef', 'center'); }
 }
 
 // ────────────────────────────────────────────────────────────  main loop
@@ -483,10 +531,11 @@ let prev = performance.now();
 resize();
 function frame(now) {
   let dt = Math.min((now - prev) / 1000, 0.033); prev = now;
+  if (state === 'paused') dt = 0;            // freeze the whole sim, keep rendering
 
   // update aim / charge / hand pose
-  computeAim(pointer.x, pointer.y);
-  if (charging) { charge = Math.min(1, charge + dt * CHARGE_RATE); handDip = charge * 5; } else handDip = 0;
+  if (state === 'play' && !charging) aimAng += (0 - aimAng) * Math.min(1, dt * 10);   // hand eases upright when idle
+  if (charging) { if (!dragging) charge = Math.min(1, charge + dt * CHARGE_RATE); handDip = charge * 5; } else handDip = 0;
   if (flickT > 0) flickT -= dt;
   // passive coin regen
   if (ammo < AMMO_MAX) { regenT += dt; if (regenT >= REGEN_TIME) { ammo++; regenT -= REGEN_TIME; } } else regenT = 0;
@@ -561,6 +610,7 @@ function frame(now) {
   for (const c of coins) drawCoin(c.x, c.y, c.spin, true, c.charged, c.r);   // coins in flight (behind the hand)
   drawHand();
   if (state === 'play') {
+    if (dragging) drawSling();
     const ht = handTop(); if (ammo > 0) drawCoin(ht.x, ht.y, 0, false, false);  // next coin, if you have one
     if (charging) drawTrajectory(POWER_MIN + (POWER_MAX - POWER_MIN) * charge);
   }
@@ -571,6 +621,8 @@ function frame(now) {
   if (banner) { g.globalAlpha = Math.min(1, banner.t / 0.4); text(banner.text, VW / 2, 82, 24, '#fff', 'center'); g.globalAlpha = 1; }
   if (flashRed > 0) { g.fillStyle = `rgba(255,46,66,${flashRed * 0.5})`; g.fillRect(0, 0, VW, VH); }
   drawHUD();
+  if (state === 'play') drawPauseBtn();
+  if (state === 'paused') drawPaused();
   if (state === 'over') drawGameOver();
   g.restore();
 
