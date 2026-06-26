@@ -28,6 +28,7 @@ export const dragStart = { x: 0, y: 0 };
 export const clouds = [];
 export const coins = [];
 export const birds = [];
+export const hoops = [];
 export const parts = [];
 export const pops = [];
 for (let i = 0; i < 8; i++) clouds.push({ x: Math.random() * S.VW, y: 22 + Math.random() * 130, s: 0.8 + Math.random() * 1.0, v: 3 + Math.random() * 5 });

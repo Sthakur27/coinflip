@@ -48,3 +48,6 @@ export const POWERUPS = {
   infinite: { dur: 10, name: 'UNLIMITED AMMO', col: '#ffd34d' },
 };
 export const PU_KEYS = Object.keys(POWERUPS);
+
+// basketball hoop (rare required target): rim opening + decorative chain net
+export const HOOP = { rimW: 15, postR: 3, chainN: 4, links: 4, seg: 4.6 };

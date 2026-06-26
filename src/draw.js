@@ -2,7 +2,7 @@
 
 import {
   DARK, PAL, TAU, LW, GROUND_Y, GRAVITY, AMMO_MAX, HEART_MAX, REGEN_TIME,
-  TYPES, POWERUPS, SKY_T, SKY_M, SKY_B, VIS_PULL,
+  TYPES, POWERUPS, SKY_T, SKY_M, SKY_B, VIS_PULL, HOOP,
 } from './config.js';
 import { g, S, clouds, pointer, dragStart, handTop, aimDir, pauseBtn, resumeBtn, retryBtn } from './state.js';
 
@@ -106,6 +106,27 @@ function drawHeart(cx, cy, s, filled) {
   g.closePath();
   g.fillStyle = filled ? '#ff5a72' : 'rgba(20,12,30,0.22)'; g.fill();
   g.lineWidth = LW; g.strokeStyle = DARK; g.stroke();
+}
+
+// ── basketball hoop: invisible backboard (just its outline), red rim, chain net
+export function drawHoop(h) {
+  const rw = HOOP.rimW;
+  const col = h.scored ? '#7dffb0' : '#ff4d4d';
+  g.globalAlpha = h.scored ? Math.max(0, Math.min(1, h.fade / 0.7)) : 1;   // fade out once completed
+  const bw = 30, bh = 22, bx = h.x - bw / 2, by = h.y - bh - 3;
+  g.lineWidth = 1.8; g.strokeStyle = h.scored ? '#7dffb0' : '#ffffff';   // backboard outline
+  g.strokeRect(bx, by, bw, bh);
+  g.lineWidth = 1.4; g.strokeStyle = col; g.strokeRect(h.x - 7, by + bh - 11, 14, 8);   // inner target square
+  // chain net — pendulum strands hanging from the rim front
+  g.strokeStyle = '#d3d9e8'; g.lineWidth = 1.4; g.lineCap = 'round';
+  for (const s of h.chains) {
+    let x = h.x + s.offx, y = h.y + 1, ang = s.th;
+    g.beginPath(); g.moveTo(x, y);
+    for (let k = 0; k < HOOP.links; k++) { x += Math.sin(ang) * HOOP.seg; y += Math.cos(ang) * HOOP.seg; g.lineTo(x, y); ang += s.th * 0.25; }
+    g.stroke();
+  }
+  g.lineWidth = 2.6; g.strokeStyle = col; g.beginPath(); g.ellipse(h.x, h.y, rw, 4.6, 0, 0, TAU); g.stroke();   // red rim
+  g.globalAlpha = 1;
 }
 
 // ── hand

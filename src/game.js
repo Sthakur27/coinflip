@@ -2,15 +2,15 @@
 
 import {
   GROUND_Y, GRAVITY, POWER_MIN, POWER_MAX, MAX_TILT, COIN_R, CHARGE_RATE,
-  AMMO_MAX, REGEN_TIME, HEART_MAX, MAX_PULL, DEAD_PULL, TYPES, POWERUPS, PU_KEYS, PAL, TAU,
+  AMMO_MAX, REGEN_TIME, HEART_MAX, MAX_PULL, DEAD_PULL, TYPES, POWERUPS, PU_KEYS, PAL, TAU, HOOP,
 } from './config.js';
 import {
-  cv, ctx, buf, g, S, pointer, dragStart, coins, birds, parts, pops,
+  cv, ctx, buf, g, S, pointer, dragStart, coins, birds, hoops, parts, pops,
   resize, toLogical, aimDir, handTop, inRect, pauseBtn, resumeBtn, retryBtn,
 } from './state.js';
 import { resumeAudio, beep } from './audio.js';
 import {
-  drawBackground, drawBird, drawCoin, drawHand, drawTrajectory, drawSling,
+  drawBackground, drawBird, drawHoop, drawCoin, drawHand, drawTrajectory, drawSling,
   drawHUD, drawPauseBtn, drawPaused, drawGameOver, drawStar, text,
 } from './draw.js';
 
@@ -19,7 +19,7 @@ function pickType(s) {
   if (Math.random() < (S.hearts < HEART_MAX ? 0.05 : 0.025)) return 'golden';   // rare bonus, likelier when hurt
   if (s >= 5 && Math.random() < 0.07) return 'gift';                            // power-up carrier
   const w = [['sparrow', 5]];
-  if (s >= 8) w.push(['pigeon', 2.5]);
+  if (s >= 8) w.push(['pigeon', 1.2]);
   if (s >= 12) w.push(['thief', 2]);
   if (s >= 24) w.push(['swift', 3]);
   let tot = 0; for (const e of w) tot += e[1];
@@ -47,8 +47,41 @@ function spawnOne() {
 }
 
 function spawnCoin(x, y, vx, vy, spinV, r = COIN_R) {
-  coins.push({ x, y, vx, vy, spin: 0, spinV, r, charged: false });
+  coins.push({ x, y, vx, vy, spin: 0, spinV, r, charged: false, hitRim: false });
   if (coins.length > 28) coins.shift();
+}
+
+// ── basketball hoops (rare, required like birds)
+function spawnHoop() {
+  const dir = Math.random() < 0.5 ? 1 : -1;
+  const h = { x: dir > 0 ? -34 : S.VW + 34, y: 60 + Math.random() * 120, dir, vx: dir * (14 + Math.random() * 8), scored: false, chains: [] };
+  for (let i = 0; i < HOOP.chainN; i++) h.chains.push({ offx: -HOOP.rimW * 0.75 + HOOP.rimW * 1.5 * (i / (HOOP.chainN - 1)), th: 0, w: 0 });
+  hoops.push(h);
+}
+function impulseChains(h, k) { for (const s of h.chains) s.w += (Math.random() * 2 - 1) * k; }
+function bounceOffPost(c, px, py) {       // reflect a coin off an immovable rim post
+  const dx = c.x - px, dy = c.y - py, rr = HOOP.postR + c.r, d2 = dx * dx + dy * dy;
+  if (d2 < rr * rr && d2 > 0.0001) {
+    const d = Math.sqrt(d2), nx = dx / d, ny = dy / d, vn = c.vx * nx + c.vy * ny;
+    if (vn < 0) { const e = 0.6; c.vx -= (1 + e) * vn * nx; c.vy -= (1 + e) * vn * ny; }
+    const ov = rr - d; c.x += nx * ov; c.y += ny * ov; c.hitRim = true;
+    return true;
+  }
+  return false;
+}
+function scoreHoop(h, c) {
+  h.scored = true; h.fade = 1.5;          // linger, then fade out
+
+  const swish = !c.hitRim, pts = swish ? 3 : 1;
+  S.score += pts; S.streak++;
+  if (S.score > S.best) { S.best = S.score; localStorage.setItem('coinflip_best', S.best); }
+  if (swish) S.ammo = Math.min(AMMO_MAX, S.ammo + 1);
+  burst(h.x, h.y, swish ? '#6ee7ff' : PAL.gold);
+  popText(h.x, h.y - 20, swish ? 'SWISH!' : 'SCORE!', swish ? '#6ee7ff' : PAL.gold);
+  beep(swish ? 880 : 660, 0.1, 'square', 0.06); setTimeout(() => beep(swish ? 1320 : 990, 0.12, 'square', 0.05), 60);
+  S.shake = swish ? 6 : 4;
+  impulseChains(h, 14);
+  checkStage();
 }
 
 // ── effects
@@ -105,7 +138,7 @@ function gameOver() {
 }
 function restart() {
   S.score = 0; S.streak = 0; S.hearts = HEART_MAX; S.ammo = AMMO_MAX; S.regenT = 0; S.stage = 1;
-  coins.length = 0; birds.length = 0; parts.length = 0; pops.length = 0;
+  coins.length = 0; birds.length = 0; hoops.length = 0; parts.length = 0; pops.length = 0;
   S.spawnT = 0.5; S.banner = null; S.flashRed = 0; S.overT = 0; S.power = null; S.powerT = 0; S.dragging = false; S.state = 'play';
 }
 
@@ -175,7 +208,7 @@ addEventListener('touchend', e => { onUp(); e.preventDefault(); }, { passive: fa
 function frame(now) {
   let dt = Math.min((now - S.prev) / 1000, 0.033); S.prev = now;
   if (S.state === 'paused') dt = 0;            // freeze the whole sim, keep rendering
-  const wdt = (S.state === 'play' && S.charging ? 0.55 : 1) * dt;   // slight bullet-time while aiming
+  const wdt = (S.state === 'play' && S.charging ? 0.35 : 1) * dt;   // bullet-time while aiming
 
   if (S.state === 'play' && !S.charging) S.aimAng += (0 - S.aimAng) * Math.min(1, dt * 10);   // hand eases upright when idle
   if (S.charging) { if (!S.dragging) S.charge = Math.min(1, S.charge + dt * CHARGE_RATE); S.handDip = S.charge * 5; } else S.handDip = 0;
@@ -186,10 +219,21 @@ function frame(now) {
   if (S.state === 'play') {
     S.spawnT -= dt;
     if (S.spawnT <= 0) {
-      if (birds.length < maxBirds(S.score)) { spawnOne(); S.spawnT = spawnGap(S.score) * (0.7 + Math.random() * 0.6); }
+      if (hoops.length === 0 && S.score >= 6 && Math.random() < 0.10) { spawnHoop(); S.spawnT = spawnGap(S.score) * (0.9 + Math.random() * 0.6); }   // rare hoop
+      else if (birds.length < maxBirds(S.score)) { spawnOne(); S.spawnT = spawnGap(S.score) * (0.7 + Math.random() * 0.6); }
       else S.spawnT = 0.3;
     }
     const bdt = (S.power === 'slowmo' ? 0.4 : 1) * wdt;    // slow-mo power-up + aim bullet-time
+    for (let hi = hoops.length - 1; hi >= 0; hi--) {
+      const h = hoops[hi];
+      h.x += h.vx * bdt;
+      for (const s of h.chains) { const target = -h.vx * 0.012; s.w += (target - s.th) * 55 * dt; s.w *= 0.90; s.th += s.w * dt; }   // chain sway
+      if (h.scored) { h.fade -= dt; if (h.fade <= 0) { hoops.splice(hi, 1); continue; } }   // fade out after a swish/score
+      if ((h.dir > 0 && h.x > S.VW + 38) || (h.dir < 0 && h.x < -38)) {
+        if (!h.scored) { loseHeart(); popText(h.dir > 0 ? S.VW - 40 : 40, 90, 'MISSED HOOP', '#ff6b6b'); }
+        hoops.splice(hi, 1);
+      }
+    }
     for (let bi = birds.length - 1; bi >= 0; bi--) {
       const b = birds[bi];
       b.x += b.vx * bdt; b.flap += bdt * 14; b.bob += bdt * b.bobSpd; b.swoopPhase += bdt * b.swoopSpd;
@@ -205,6 +249,12 @@ function frame(now) {
     let hit = -1;
     if (S.state === 'play') for (let bi = 0; bi < birds.length; bi++) { const b = birds[bi], dx = c.x - b.x, dy = c.y - b.y, rr = b.r + c.r - 2; if (dx * dx + dy * dy < rr * rr) { hit = bi; break; } }
     if (hit >= 0) { hitBird(hit, c); coins.splice(i, 1); continue; }
+    // hoops: bounce off the rim posts, swish/score through the opening (coin passes through)
+    if (S.state === 'play') for (const h of hoops) {
+      const b1 = bounceOffPost(c, h.x - HOOP.rimW, h.y), b2 = bounceOffPost(c, h.x + HOOP.rimW, h.y);
+      if (b1 || b2) { impulseChains(h, 5); beep(280, 0.05, 'square', 0.05); }
+      if (!h.scored && c.vy > 0 && Math.abs(c.x - h.x) < HOOP.rimW - 3 && (c.y - c.vy * wdt) < h.y && c.y >= h.y) scoreHoop(h, c);
+    }
     if (c.y > GROUND_Y + 4 || c.x < -12 || c.x > S.VW + 12) coins.splice(i, 1);
   }
   // coin-on-coin elastic bounce (equal mass)
@@ -245,6 +295,7 @@ function frame(now) {
   g.save();
   if (S.shake > 0) g.translate((Math.random() - 0.5) * S.shake, (Math.random() - 0.5) * S.shake);
   drawBackground(dt);
+  for (const h of hoops) drawHoop(h);
   for (const b of birds) drawBird(b);
   for (const c of coins) drawCoin(c.x, c.y, c.spin, true, c.charged, c.r);
   drawHand();
@@ -277,4 +328,4 @@ S.prev = performance.now();
 requestAnimationFrame(frame);
 
 // expose a little hook for debugging / manual stepping
-window.__G = { S, coins, birds, parts, pops, frame, spawnOne, release, restart };
+window.__G = { S, coins, birds, hoops, parts, pops, frame, spawnOne, spawnHoop, scoreHoop, release, restart };
