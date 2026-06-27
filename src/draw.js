@@ -4,7 +4,7 @@ import {
   DARK, PAL, TAU, LW, GROUND_Y, GRAVITY, AMMO_MAX, HEART_MAX, REGEN_TIME,
   TYPES, POWERUPS, SKY_T, SKY_M, SKY_B, VIS_PULL, HOOP,
 } from './config.js';
-import { g, S, clouds, pointer, dragStart, handTop, aimDir, pauseBtn, sfxBtn, musicBtn, resumeBtn, restartBtn, retryBtn } from './state.js';
+import { g, S, clouds, pointer, dragStart, handTop, aimDir, pauseBtn, sfxBtn, musicBtn, resumeBtn, restartBtn, retryBtn, startBtn } from './state.js';
 
 // ── primitives
 export function ell(x, y, rx, ry, fill, stroke = DARK) {
@@ -273,6 +273,25 @@ export function drawPaused() {
   drawButton(resumeBtn(), 'RESUME', '#3aa6f0');
   drawButton(restartBtn(), 'RESTART', '#ff6b6b');
   text('P / ESC TO RESUME', S.VW / 2, S.VH / 2 + 60, 8, '#d8e2ef', 'center');
+}
+export function drawIntro() {
+  g.fillStyle = 'rgba(20,12,30,0.5)'; g.fillRect(0, 0, S.VW, S.VH);
+  const cxp = S.VW / 2;
+  // demo birds drift across and flap behind the title
+  const t = S.introT;
+  const x1 = ((t * 26) % (S.VW + 80)) - 40;
+  drawBird({ type: 'sparrow', r: 11, dir: 1, x: x1, y: S.VH * 0.16 + Math.sin(t * 1.6) * 6, flap: Math.sin(t * 9), hp: 1, maxHp: 1, hitFlash: 0 });
+  const x2 = S.VW + 40 - ((t * 18) % (S.VW + 80));
+  drawBird({ type: 'pigeon', r: 15, dir: -1, x: x2, y: S.VH * 0.24 + Math.sin(t * 1.2 + 1) * 5, flap: Math.sin(t * 7), hp: 2, maxHp: 2, hitFlash: 0 });
+  text('COIN FLIP', cxp, S.VH * 0.30, 34, '#ffd34d', 'center');
+  text('BONK THE BIRD!', cxp, S.VH * 0.30 + 21, 13, '#fff', 'center');
+  text('DRAG BACK  ·  RELEASE TO FLING COINS', cxp, S.VH * 0.46, 12, '#fff', 'center');
+  text('SINK THEM THROUGH HOOPS FOR A SWISH', cxp, S.VH * 0.46 + 17, 9, '#bfe6ff', 'center');
+  text("DON'T LET BIRDS ESCAPE  ·  3 LIVES", cxp, S.VH * 0.46 + 31, 9, '#ffb3c0', 'center');
+  const r = startBtn();
+  rrect(r.x, r.y, r.w, r.h, 7, '#43c06a', DARK);
+  text('START', cxp, r.y + r.h / 2 + 6, 18, '#fff', 'center');
+  text('CLICK / SPACE   ·   P PAUSE   ·   M MUSIC   ·   N SFX', cxp, r.y + r.h + 17, 8, '#d8e2ef', 'center');
 }
 export function drawGameOver() {
   g.fillStyle = `rgba(20,12,30,${Math.min(0.62, S.overT * 0.9)})`; g.fillRect(0, 0, S.VW, S.VH);

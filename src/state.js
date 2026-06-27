@@ -15,10 +15,10 @@ export const S = {
   score: 0, streak: 0, best: +(localStorage.getItem('coinflip_best') || 0),
   charging: false, charge: 0, shake: 0,
   ammo: AMMO_MAX, regenT: 0,
-  hearts: HEART_MAX, state: 'play', spawnT: 0.6, stage: 1,
+  hearts: HEART_MAX, state: 'intro', spawnT: 0.6, stage: 1,
   banner: null, flashRed: 0, overT: 0,
   power: null, powerT: 0,
-  dragging: false, prev: 0,
+  dragging: false, prev: 0, introT: 0,
 };
 
 export const pointer = { x: 320, y: 40 };
@@ -61,3 +61,4 @@ export function ctrBtn(w, h, cy) { return { x: (S.VW - w) / 2, y: cy, w, h }; }
 export function resumeBtn() { return ctrBtn(110, 24, S.VH / 2 - 6); }
 export function restartBtn() { return ctrBtn(110, 24, S.VH / 2 + 24); }
 export function retryBtn() { return ctrBtn(118, 26, S.VH / 2 + 42); }
+export function startBtn() { return ctrBtn(130, 30, S.VH * 0.6); }

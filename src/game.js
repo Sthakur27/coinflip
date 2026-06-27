@@ -12,7 +12,7 @@ import { resumeAudio, beep, toggleSfx, toggleMusic, isSfxOff, isMusicOff } from 
 import { startMusic } from './music.js';
 import {
   drawBackground, drawBird, drawHoop, drawCoin, drawHand, drawTrajectory, drawSling,
-  drawHUD, drawPauseBtn, drawSfxBtn, drawMusicBtn, drawPaused, drawGameOver, drawStar, text,
+  drawHUD, drawPauseBtn, drawSfxBtn, drawMusicBtn, drawPaused, drawGameOver, drawIntro, drawStar, text,
 } from './draw.js';
 
 // ── spawning + difficulty
@@ -148,6 +148,7 @@ function pauseGame() { if (S.state === 'play') { S.state = 'paused'; S.charging 
 function togglePause() { if (S.state === 'play') pauseGame(); else if (S.state === 'paused') S.state = 'play'; }
 function onDown(p) {
   resumeAudio(); startMusic();
+  if (S.state === 'intro') { restart(); return; }   // tap to start
   if (S.state === 'over') { if (S.overT > 0.5 && inRect(p, retryBtn())) restart(); return; }   // deliberate confirm only
   if (S.state === 'paused') { if (inRect(p, resumeBtn())) S.state = 'play'; else if (inRect(p, restartBtn())) restart(); return; }
   if (inRect(p, musicBtn())) { toggleMusic(); return; }
@@ -198,6 +199,7 @@ addEventListener('mousemove', e => { setPointer(e.clientX, e.clientY); if (S.dra
 addEventListener('mousedown', e => { setPointer(e.clientX, e.clientY); onDown(pointer); });
 addEventListener('mouseup', onUp);
 addEventListener('keydown', e => {
+  if (S.state === 'intro') { if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); resumeAudio(); startMusic(); restart(); } return; }
   if (e.code === 'Space') { e.preventDefault(); if (!e.repeat && S.state === 'play' && S.ammo > 0 && !S.dragging) { resumeAudio(); startMusic(); S.charging = true; S.charge = 0; S.aimAng = 0; } }
   else if (e.code === 'KeyP' || e.code === 'Escape') { e.preventDefault(); togglePause(); }
   else if (e.code === 'KeyM') { toggleMusic(); }
@@ -220,6 +222,7 @@ function frame(now) {
   if (S.flickT > 0) S.flickT -= dt;
   if (S.ammo < AMMO_MAX) { S.regenT += dt; if (S.regenT >= REGEN_TIME) { S.ammo++; S.regenT -= REGEN_TIME; } } else S.regenT = 0;
   if (S.power) { S.powerT -= wdt; if (S.powerT <= 0) S.power = null; }   // burns on world time, so aim bullet-time doesn't waste it
+  if (S.state === 'intro') S.introT += dt;
 
   if (S.state === 'play') {
     S.spawnT -= dt;
@@ -307,9 +310,9 @@ function frame(now) {
   for (const b of birds) drawBird(b);
   for (const c of coins) drawCoin(c.x, c.y, c.spin, true, c.charged, c.r);
   drawHand();
+  if (S.state === 'play' || S.state === 'intro') { const ht = handTop(); if (S.ammo > 0) drawCoin(ht.x, ht.y, 0, false, false); }   // coin in hand
   if (S.state === 'play') {
     if (S.dragging) drawSling();
-    const ht = handTop(); if (S.ammo > 0) drawCoin(ht.x, ht.y, 0, false, false);
     if (S.charging) drawTrajectory(POWER_MIN + (POWER_MAX - POWER_MIN) * S.charge);
   }
   for (const p of parts) { const a = Math.max(0, p.life / 0.6); g.globalAlpha = a; if (p.star) drawStar(p.x, p.y, 3, p.col); else { g.fillStyle = p.col; g.beginPath(); g.ellipse(p.x, p.y, 1.6, 1.6, 0, 0, TAU); g.fill(); } }
@@ -318,10 +321,11 @@ function frame(now) {
   g.globalAlpha = 1;
   if (S.banner) { g.globalAlpha = Math.min(1, S.banner.t / 0.4); text(S.banner.text, S.VW / 2, 82, 24, '#fff', 'center'); g.globalAlpha = 1; }
   if (S.flashRed > 0) { g.fillStyle = `rgba(255,46,66,${S.flashRed * 0.5})`; g.fillRect(0, 0, S.VW, S.VH); }
-  drawHUD();
+  if (S.state !== 'intro') drawHUD();
   if (S.state === 'play') { drawMusicBtn(isMusicOff()); drawSfxBtn(isSfxOff()); drawPauseBtn(); }
   if (S.state === 'paused') drawPaused();
   if (S.state === 'over') drawGameOver();
+  if (S.state === 'intro') drawIntro();
   g.restore();
 
   ctx.imageSmoothingEnabled = false;
