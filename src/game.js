@@ -150,7 +150,13 @@ function onDown(p) {
   resumeAudio(); startMusic();
   if (S.state === 'intro') { restart(); return; }   // tap to start
   if (S.state === 'over') { if (S.overT > 0.5 && inRect(p, retryBtn())) restart(); return; }   // deliberate confirm only
-  if (S.state === 'paused') { if (inRect(p, resumeBtn())) S.state = 'play'; else if (inRect(p, restartBtn())) restart(); return; }
+  if (S.state === 'paused') {
+    if (inRect(p, musicBtn())) { toggleMusic(); return; }
+    if (inRect(p, sfxBtn())) { toggleSfx(); return; }
+    if (inRect(p, resumeBtn())) S.state = 'play';
+    else if (inRect(p, restartBtn())) restart();
+    return;
+  }
   if (inRect(p, musicBtn())) { toggleMusic(); return; }
   if (inRect(p, sfxBtn())) { toggleSfx(); return; }
   if (inRect(p, pauseBtn())) { pauseGame(); return; }
@@ -322,10 +328,11 @@ function frame(now) {
   if (S.banner) { g.globalAlpha = Math.min(1, S.banner.t / 0.4); text(S.banner.text, S.VW / 2, 82, 24, '#fff', 'center'); g.globalAlpha = 1; }
   if (S.flashRed > 0) { g.fillStyle = `rgba(255,46,66,${S.flashRed * 0.5})`; g.fillRect(0, 0, S.VW, S.VH); }
   if (S.state !== 'intro') drawHUD();
-  if (S.state === 'play') { drawMusicBtn(isMusicOff()); drawSfxBtn(isSfxOff()); drawPauseBtn(); }
   if (S.state === 'paused') drawPaused();
   if (S.state === 'over') drawGameOver();
   if (S.state === 'intro') drawIntro();
+  if (S.state === 'play' || S.state === 'paused') { drawMusicBtn(isMusicOff()); drawSfxBtn(isSfxOff()); }   // audio toggles also reachable while paused
+  if (S.state === 'play') drawPauseBtn();
   g.restore();
 
   ctx.imageSmoothingEnabled = false;

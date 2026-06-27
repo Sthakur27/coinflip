@@ -33,7 +33,7 @@ export const MAX_PULL = 70, DEAD_PULL = 10, VIS_PULL = 42;
 export const TYPES = {
   sparrow: { r: 11, hp: 1, spd: 1.00, pts: 1, body: '#ff5a72', dk: '#e23a59', belly: '#ffd9c2' },
   pigeon:  { r: 15, hp: 2, spd: 0.62, pts: 2, body: '#94a6c8', dk: '#6c7fa6', belly: '#e2e9f6' },
-  swift:   { r: 8,  hp: 1, spd: 1.75, pts: 1, body: '#54d6c2', dk: '#2fae9c', belly: '#d9fff8', zig: true },
+  swift:   { r: 8,  hp: 1, spd: 1.45, pts: 1, body: '#54d6c2', dk: '#2fae9c', belly: '#d9fff8', zig: true },
   thief:   { r: 11, hp: 1, spd: 1.05, pts: 2, body: '#43435a', dk: '#27273a', belly: '#ececf4', thief: true },
   golden:  { r: 12, hp: 1, spd: 0.60, pts: 5, body: '#ffd34d', dk: '#e0a31f', belly: '#fff3b0', golden: true },
   gift:    { r: 12, hp: 1, spd: 0.72, pts: 2, body: '#b06bff', dk: '#7d3fd0', belly: '#ecd9ff', gift: true },
