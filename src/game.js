@@ -22,7 +22,7 @@ function pickType(s) {
   const w = [['sparrow', 5]];
   if (s >= 3) w.push(['pigeon', 1.2]);
   if (s >= 5) w.push(['thief', 2]);
-  if (s >= 9) w.push(['swift', 3]);
+  if (s >= 9) w.push(['swift', 1.2]);
   let tot = 0; for (const e of w) tot += e[1];
   let r = Math.random() * tot;
   for (const [t, x] of w) { if ((r -= x) <= 0) return t; }
